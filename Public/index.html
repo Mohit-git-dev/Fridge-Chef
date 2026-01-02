@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Fridge Chef</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        button:hover { background: #219150; }
+        .btn-download { background: #3498db; margin-top: 20px; }
+        .btn-download:hover { background: #2980b9; }
+        #loader { display: none; text-align: center; margin-top: 10px; color: #7f8c8d; }
+        #recipe { margin-top: 20px; display: none; padding: 15px; border: 1px solid #eee; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍳 AI Fridge Chef</h1>
+        <p>Enter the ingredients you have (comma separated):</p>
+        <input type="text" id="ingredientsInput" placeholder="e.g., tomato, eggs, bread">
+        <button onclick="getRecipe()">Generate Recipe</button>
+        
+        <div id="loader">Chef is thinking... 🧑‍🍳</div>
+
+        <div id="recipe">
+            <h2 id="recipeTitle"></h2>
+            <p><strong>Time:</strong> <span id="recipeTime"></span> | <strong>Level:</strong> <span id="recipeDiff"></span></p>
+            <h3>Ingredients:</h3>
+            <ul id="recipeIngredients"></ul>
+            <h3>Steps:</h3>
+            <ol id="recipeSteps"></ol>
+            
+            <button class="btn-download" onclick="downloadPDF()">📥 Save as PDF</button>
+        </div>
+    </div>
+
+    <script>
+        async function getRecipe() {
+            const input = document.getElementById('ingredientsInput').value;
+            if(!input) return alert("Add some ingredients first!");
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('recipe').style.display = 'none';
+
+            try {
+                const response = await fetch('/generate-recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ingredients: input })
+                });
+                
+                const data = await response.json();
+
+                // Fill the UI with Data
+                document.getElementById('recipeTitle').innerText = data.title;
+                document.getElementById('recipeTime').innerText = data.time;
+                document.getElementById('recipeDiff').innerText = data.difficulty;
+                
+                // 3. FIXED: Ensure ingredients and instructions are arrays
+                document.getElementById('recipeIngredients').innerHTML = data.ingredients.map(i => `<li>${i}</li>`).join('');
+                document.getElementById('recipeSteps').innerHTML = data.instructions.map(s => `<li>${s}</li>`).join('');
+
+                document.getElementById('recipe').style.display = 'block';
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong! Check your server terminal.");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        // 4. ADDED: Download Function
+        function downloadPDF() {
+            const element = document.getElementById('recipe');
+            const opt = {
+                margin: 0.5,
+                filename: 'Chef-Recipe.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>
